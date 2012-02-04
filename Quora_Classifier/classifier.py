@@ -9,7 +9,7 @@ import sys
 def parse_test_line(line):
     words = line.split()
     val_idx = 1
-    param_vals = [float(val.split(':')[val_idx]) for val in words[2:]]
+    param_vals = [float(val.split(':')[val_idx]) for val in words[1:]]
     return param_vals
 
 def parse_data_line(line):
@@ -33,10 +33,14 @@ def plot2D(data, ratings):
 
     pluses = Z_2[(ratings > 0).squeeze()]
     minuses = Z_2[(ratings < 0).squeeze()]
+    cent_p = np.mean(pluses, axis=0) 
+    cent_m = np.mean(minuses, axis=0)
 
     ax = pplt.subplot(111)
-    ax.scatter(pluses[:,0], pluses[:,1], s=10, c='r', marker='o')
-    ax.scatter(minuses[:,0], minuses[:,1], s=10, c='g', marker='o')
+    ax.scatter(pluses[:,0], pluses[:,1], s=20, c='r', marker='o')
+    ax.scatter(cent_p[0], cent_p[1], s=70, c='r', marker='o')
+    ax.scatter(minuses[:,0], minuses[:,1], s=20, c='g', marker='o')
+    ax.scatter(cent_m[0], cent_m[1], s=70, c='g', marker='o')
     pplt.show()
 
 def optimal_truncation(U,S,Vt):
@@ -45,10 +49,7 @@ def optimal_truncation(U,S,Vt):
     return U[:,:k], S[:k], Vt[:k,:]
 
 def eucl_dist(vec1, vec2):
-    # TODO actually implement eucl. dist. 
-    return sum([(v1-v2)**2 for (v1,v2) in zip(vec1,vec2)])
-#    return abs(sum(vec1 - vec2))
-#    return la.norm(vec1 - vec2)
+    return np.sqrt(sum([(v1-v2)**2 for (v1,v2) in zip(vec1,vec2)]))
 
 #################################################################
 ### Script
@@ -76,25 +77,43 @@ for i,row in enumerate(data.T):
     col_varnce = sum(row*row)/row.size
     row /= col_varnce
 
-# plot2D(data, ratings)
+#plot2D(data, ratings)
 
-# truncate for efficiency
+# get SVD
 U, S, Vt = la.svd(data)
-U_k, S_k, Vt_k = optimal_truncation(U,S,Vt)
-delta_hat = np.dot(U_k, np.dot(np.eye(len(S_k))*S_k, Vt_k))
-pluses = delta_hat[(ratings > 0).squeeze()]
-minuses = delta_hat[(ratings < 0).squeeze()]
 
-cent_p = np.mean(pluses, axis=0) 
-cent_m = np.mean(minuses, axis=0)
+# find Wt so we can do whitening
+data_rot = np.dot(data, Vt.T)
+lambda_ = np.var(data_rot, axis=0)
+D_vec = np.ones(lambda_.shape) / np.sqrt(lambda_)
+Vdata = np.array([Vt[i]*lam for i,lam in enumerate(D_vec)]).T
+Wt = np.dot(Vdata, Vt)
+
+# comput data_zca to whiten our learning data
+data_zca = np.dot(data, Wt)
+
+pluses = data_zca[(ratings > 0).squeeze()]
+minuses = data_zca[(ratings < 0).squeeze()]
+
+#U_k, S_k, Vt_k = optimal_truncation(U,S,Vt)
+#delta_hat = np.dot(U_k, np.dot(np.eye(len(S_k))*S_k, Vt_k))
+#pluses = delta_hat[(ratings > 0).squeeze()]
+#minuses = delta_hat[(ratings < 0).squeeze()]
+
+cent_p = np.mean(pluses, axis=1) 
+cent_m = np.mean(minuses, axis=1)
+print 'cent_p =', cent_p
+print 'cent_m =', cent_m
     
 n_test = int(float(raw_input()))
 for i, test in enumerate(sys.stdin):
     test_line = parse_test_line(test)
     params = np.array(test_line)
-    # TODO need to normalize the test vector
-    dist_p = eucl_dist(params, cent_p)
-    dist_m = eucl_dist(params, cent_m)
+
+    # whiten the test parameters
+    params_zca = np.dot(params, Wt)
+    dist_p = eucl_dist(params_zca, cent_p)
+    dist_m = eucl_dist(params_zca, cent_m)
     print dist_p, dist_m
     if dist_p > dist_m:
         print '-1'
