@@ -9,13 +9,13 @@ import sys
 def parse_test_line(line):
     words = line.split()
     val_idx = 1
-    param_vals = [val.split(':')[val_idx] for val in words[2:]]
+    param_vals = [float(val.split(':')[val_idx]) for val in words[2:]]
     return param_vals
 
 def parse_data_line(line):
     words = line.split()
     val_idx = 1
-    param_vals = [val.split(':')[val_idx] for val in words[2:]]
+    param_vals = [float(val.split(':')[val_idx]) for val in words[2:]]
     return (words[1], param_vals)
 
 def print_mean_varnce(data):
@@ -45,8 +45,11 @@ def optimal_truncation(U,S,Vt):
     return U[:,:k], S[:k], Vt[:k,:]
 
 def eucl_dist(vec1, vec2):
+    # TODO actually implement eucl. dist. 
+    return sum([(v1-v2)**2 for (v1,v2) in zip(vec1,vec2)])
 #    return abs(sum(vec1 - vec2))
-    return la.norm(vec1 - vec2)
+#    return la.norm(vec1 - vec2)
+
 #################################################################
 ### Script
 
@@ -82,14 +85,18 @@ delta_hat = np.dot(U_k, np.dot(np.eye(len(S_k))*S_k, Vt_k))
 pluses = delta_hat[(ratings > 0).squeeze()]
 minuses = delta_hat[(ratings < 0).squeeze()]
 
-cent_p = np.mean(pluses) 
-cent_m = np.mean(minuses)
+cent_p = np.mean(pluses, axis=0) 
+cent_m = np.mean(minuses, axis=0)
     
 n_test = int(float(raw_input()))
 for i, test in enumerate(sys.stdin):
     test_line = parse_test_line(test)
     params = np.array(test_line)
-    if eucl_dist(params, cent_p) > eucl_dis(params, cent_m):
+    # TODO need to normalize the test vector
+    dist_p = eucl_dist(params, cent_p)
+    dist_m = eucl_dist(params, cent_m)
+    print dist_p, dist_m
+    if dist_p > dist_m:
         print '-1'
     else:
         print '+1'
