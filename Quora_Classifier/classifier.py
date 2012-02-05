@@ -10,7 +10,7 @@ def parse_test_line(line):
     words = line.split()
     val_idx = 1
     param_vals = [float(val.split(':')[val_idx]) for val in words[1:]]
-    return param_vals
+    return (words[0], np.array(param_vals))
 
 def parse_data_line(line):
     words = line.split()
@@ -43,11 +43,6 @@ def plot2D(data, ratings):
     ax.scatter(cent_m[0], cent_m[1], s=70, c='g', marker='o')
     pplt.show()
 
-def optimal_truncation(U,S,Vt):
-    #TODO make a function to optimize the truncation point, given data
-    k = 10
-    return U[:,:k], S[:k], Vt[:k,:]
-
 def eucl_dist(vec1, vec2):
     return np.sqrt(sum([(v1-v2)**2 for (v1,v2) in zip(vec1,vec2)]))
 
@@ -62,7 +57,6 @@ data = np.empty((n_data, n_params))
 ratings = np.empty((n_data,1))
 
 # read training data up to n_data - 1
-#for i,datum in enumerate(sys.stdin):
 for i in range(n_data):
     datum = raw_input()
     rating, param_vals = parse_data_line(datum)
@@ -74,8 +68,6 @@ for i in range(n_data):
 col_means = np.mean(data, axis=0)
 for i,row in enumerate(data.T):
     row -= col_means[i]
-    col_varnce = sum(row*row)/row.size
-    row /= col_varnce
 
 #plot2D(data, ratings)
 
@@ -92,30 +84,28 @@ Wt = np.dot(Vdata, Vt)
 # comput data_zca to whiten our learning data
 data_zca = np.dot(data, Wt)
 
+# our clustering is done for us.
+# all we need to do is get the centroids
+# of each 
 pluses = data_zca[(ratings > 0).squeeze()]
 minuses = data_zca[(ratings < 0).squeeze()]
-
-#U_k, S_k, Vt_k = optimal_truncation(U,S,Vt)
-#delta_hat = np.dot(U_k, np.dot(np.eye(len(S_k))*S_k, Vt_k))
-#pluses = delta_hat[(ratings > 0).squeeze()]
-#minuses = delta_hat[(ratings < 0).squeeze()]
-
+# TODO find a better way of getting the cetroid
+#       e.g. least squares
 cent_p = np.mean(pluses, axis=1) 
 cent_m = np.mean(minuses, axis=1)
-print 'cent_p =', cent_p
-print 'cent_m =', cent_m
     
+# now we run our tests 
 n_test = int(float(raw_input()))
 for i, test in enumerate(sys.stdin):
-    test_line = parse_test_line(test)
-    params = np.array(test_line)
+    name, params = parse_test_line(test)
+    params -= col_means
 
     # whiten the test parameters
-    params_zca = np.dot(params, Wt)
+    params_zca = np.dot(params.T, Wt)
     dist_p = eucl_dist(params_zca, cent_p)
     dist_m = eucl_dist(params_zca, cent_m)
-    print dist_p, dist_m
+    # print out the judgement
     if dist_p > dist_m:
-        print '-1'
+        print name, '-1'
     else:
-        print '+1'
+        print name, '+1'
