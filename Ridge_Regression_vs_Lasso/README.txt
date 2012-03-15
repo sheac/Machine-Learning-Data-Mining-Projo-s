@@ -3,7 +3,7 @@ The script in a5_comb.py calls functions in a5_util to compare the performance o
 Specifically it:
 1) Plots the raw data as a scatterplot
 2) Graphs the regularization paths against different degrees of freedom for the Ridge method
-3) Graphs the squared errors against different degrees of freedom for the Ridge method
+3) Uses 10-fold Cross Validation to graph the squared errors against different degrees of freedom for the Ridge method
 4) Does the same for Lasso method, using the Shooting algorithm
 
 I guess it may be redundant to say, but to run this puppy, just run the driver class a5_comb.py.
