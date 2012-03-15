@@ -58,9 +58,12 @@ def sqrd_err(X, y, k, function, d2_vec):
 
     n = np.shape(X)[0]
     d = np.shape(X)[1]
-    d_round = 100 # cheating - this should not be magic number
 
-    errors = np.empty((k, d_round))
+        # want n_round <-- the closest multiple of k 
+        #   that is >= n
+        #   e.g. (n=27, k=10) ==> n_round <-- 30
+    n_round = n + (k - (n % k))
+    errors = np.empty((k, n_round))
 
     for i in xrange(k):
         test = np.zeros(n, dtype=bool)
@@ -74,7 +77,7 @@ def sqrd_err(X, y, k, function, d2_vec):
         Xtest, ytest, _ = standardize(X[test], y[test], opts)
         theta = function(Xtrain, ytrain, d2_vec)
 
-        for j in xrange(d_round):
+        for j in xrange(n_round):
             errors[i, j] = np.mean((ytest - np.dot(Xtest, theta[j]))**2)
 
     err_mean = np.mean(errors, axis=0)
